@@ -15,5 +15,10 @@ class WorkJob extends Model
     {
         return $this->belongsTo(User::class, 'client_id');
     }
+
+    public function assignment()
+    {
+        return $this->hasOne(JobAssignment::class, 'work_job_id');
+    }
 }
 
