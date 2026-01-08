@@ -55,4 +55,9 @@ class User extends Authenticatable
     {
         return $this->roles()->where('name', $role)->exists();
     }
+
+    public function workJobs()
+    {
+        return $this->hasMany(WorkJob::class, 'client_id');
+    }
 }
