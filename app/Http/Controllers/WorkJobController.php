@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\JobAssignment;
 use Illuminate\Support\Facades\DB;
+use App\Services\GoMatchingService;
+use App\Models\User;
 
 class WorkJobController extends Controller
 {
@@ -32,6 +34,8 @@ class WorkJobController extends Controller
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'required|string',
+            'skills' => 'required|array|min:1',
+            'skills.*' => 'string',
         ]);
 
         // 3. Create job
@@ -39,10 +43,40 @@ class WorkJobController extends Controller
             'client_id' => Auth::id(),
             'title' => $validated['title'],
             'description' => $validated['description'],
+            'skills' => $validated['skills'],
             'status' => 'open',
         ]);
 
-        // 4. Return response (temporary)
+        // 4. Call Go matching service (non-blocking)
+        try {
+            $matchingService = new GoMatchingService();
+
+            // Fetch all technicians with their skills
+            $technicians = User::role('technician')
+                ->with('skills')
+                ->get();
+
+            $response = $matchingService->matchTechnicians([
+                'job_id' => $job->id,
+                'required_skills' => $job->skills,
+                'technicians' => $technicians->map(fn ($tech) => [
+                    'id' => $tech->id,
+                    'skills' => $tech->skills->pluck('name')->toArray(),
+                ])->toArray(),
+            ]);
+
+            $job->update([
+                'recommended_technicians' => $response['recommended_technicians'] ?? [],
+            ]);
+
+        } catch (\Throwable $e) {
+            logger()->error('Go matching failed', [
+                'work_job_id' => $job->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        // 5. Return response
         return response()->json([
             'message' => 'Job created successfully',
             'job' => $job,

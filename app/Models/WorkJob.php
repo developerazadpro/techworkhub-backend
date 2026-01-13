@@ -10,7 +10,11 @@ class WorkJob extends Model
 
     protected $fillable = ['client_id', 'title', 'description', 'status'];
 
-    
+    protected $casts = [
+        'skills' => 'array',
+        'recommended_technicians' => 'array',
+    ];
+
     public function client()
     {
         return $this->belongsTo(User::class, 'client_id');
