@@ -52,9 +52,11 @@ class WorkJobController extends Controller
             $matchingService = new GoMatchingService();
 
             // Fetch all technicians with their skills
-            $technicians = User::role('technician')
-                ->with('skills')
-                ->get();
+           $technicians = User::whereHas('roles', function ($q) {
+                $q->where('name', 'technician');
+            })
+            ->with('skills')
+            ->get();
 
             $response = $matchingService->matchTechnicians([
                 'job_id' => $job->id,
