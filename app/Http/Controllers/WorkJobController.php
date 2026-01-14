@@ -53,10 +53,10 @@ class WorkJobController extends Controller
 
             // Fetch all technicians with their skills
            $technicians = User::whereHas('roles', function ($q) {
-                $q->where('name', 'technician');
-            })
-            ->with('skills')
-            ->get();
+                            $q->where('name', 'technician');
+                        })
+                        ->with('skills')
+                        ->get();
 
             $response = $matchingService->matchTechnicians([
                 'job_id' => $job->id,
@@ -78,7 +78,10 @@ class WorkJobController extends Controller
             ]);
         }
 
-        // 5. Return response
+        // 5. Refresh job to get updated recommended_technicians
+        $job->refresh();
+
+        // 6. Return response
         return response()->json([
             'message' => 'Job created successfully',
             'job' => $job,

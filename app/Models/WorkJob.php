@@ -8,7 +8,7 @@ class WorkJob extends Model
 {
     protected $table = 'work_jobs';
 
-    protected $fillable = ['client_id', 'title', 'description', 'status'];
+    protected $fillable = ['client_id', 'title', 'description', 'status', 'skills', 'recommended_technicians'];
 
     protected $casts = [
         'skills' => 'array',
