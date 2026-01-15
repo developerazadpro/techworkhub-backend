@@ -12,10 +12,12 @@ use App\Models\User;
 
 class WorkJobController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        if (!Auth::user()->hasRole('technician')) {
-            abort(403, 'Only technicians can view jobs.');
+        $user = $request->user();
+
+        if (!$user || !$user->hasRole('technician')) {
+            return response()->json(['message' => 'Unauthorized'], 401);
         }
 
         $jobs = WorkJob::where('status', 'open')->get();
@@ -26,8 +28,14 @@ class WorkJobController extends Controller
     public function store(Request $request)
     {
         // 1. Authorization: only clients can create jobs
-        if (!Auth::user()->hasRole('client')) {
-            abort(403, 'Only clients can create jobs.');
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        if (!$user->hasRole('client')) {
+            return response()->json(['message' => 'Only clients can create jobs.'], 403);
         }
 
         // 2. Validate input
@@ -88,10 +96,16 @@ class WorkJobController extends Controller
         ], 201);
     }
 
-    public function accept($id)
+    public function accept(Request $request, $id)
     {
-        if (!Auth::user()->hasRole('technician')) {
-            abort(403, 'Only technicians can accept jobs.');
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        if (!$user->hasRole('technician')) {
+            return response()->json(['message' => 'Only technicians can accept jobs.'], 403);
         }
 
         DB::transaction(function () use ($id) {
