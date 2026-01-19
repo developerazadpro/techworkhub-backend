@@ -22,7 +22,28 @@ class WorkJobController extends Controller
         }
 
         $jobs = WorkJob::where('status', 'open')->get();
+        
+        $jobs = $jobs->map(function ($job) {
 
+                // skills stored as JSON string        
+                $skills = is_array($job->skills) ? $job->skills : json_decode($job->skills ?? '[]', true);
+
+                // convert technician IDs to names
+                $technicianIds = is_array($job->recommended_technicians) ? $job->recommended_technicians : json_decode($job->technicians ?? '[]', true);
+
+                return [
+                    'id' => $job->id,
+                    'client_id' => $job->client_id,
+                    'title' => $job->title,
+                    'description' => $job->description,                    
+                    'skills' => $skills,                    
+                    'recommended_technicians' => User::whereIn('id', $technicianIds)->pluck('name')->toArray(),
+                    'status' => $job->status,
+                    'created_at' => $job->created_at,
+                    'updated_at' => $job->updated_at,
+                ];
+        });
+        
         return response()->json($jobs);
     }
 
