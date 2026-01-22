@@ -21,15 +21,12 @@ class WorkJobController extends Controller
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
-        $jobs = WorkJob::where('status', 'open')->get();
+        $jobs = WorkJob::where('status', 'open')->latest()->get();
         
         $jobs = $jobs->map(function ($job) {
 
                 // skills stored as JSON string        
                 $skills = is_array($job->skills) ? $job->skills : json_decode($job->skills ?? '[]', true);
-
-                // convert technician IDs to names
-                $technicianIds = is_array($job->recommended_technicians) ? $job->recommended_technicians : json_decode($job->technicians ?? '[]', true);
 
                 return [
                     'id' => $job->id,
@@ -37,14 +34,17 @@ class WorkJobController extends Controller
                     'title' => $job->title,
                     'description' => $job->description,                    
                     'skills' => $skills,                    
-                    'recommended_technicians' => User::whereIn('id', $technicianIds)->pluck('name')->toArray(),
                     'status' => $job->status,
                     'created_at' => $job->created_at,
                     'updated_at' => $job->updated_at,
                 ];
         });
         
-        return response()->json($jobs);
+        // Success response
+        return response()->json([
+            'success' => true,
+            'jobs' => $jobs
+        ], 200);
     }
 
     public function store(Request $request)
@@ -134,7 +134,7 @@ class WorkJobController extends Controller
             $job = WorkJob::lockForUpdate()->findOrFail($id);
 
             if ($job->status !== 'open') {
-                abort(400, 'Job is not available.');
+                abort(409, 'Job already assigned.');
             }
 
             JobAssignment::create([
@@ -150,4 +150,40 @@ class WorkJobController extends Controller
         ]);
     }
 
+    public function myJobs()
+    {
+        // 1️ Ensure user is authenticated
+        $technicianId = Auth::id();
+
+        if (!$technicianId) {
+            return response()->json([
+                'message' => 'Unauthenticated.'
+            ], 401);
+        }
+
+        // 2️ Fetch jobs assigned to technician, descending order
+        $jobs = WorkJob::whereHas('assignments', function ($q) use ($technicianId) {
+                $q->where('technician_id', $technicianId);
+            })
+            ->latest() // orders by created_at DESC
+            ->get()
+            ->map(function ($job) {
+                return [
+                    'id' => $job->id,
+                    'client_id' => $job->client_id,
+                    'title' => $job->title,
+                    'description' => $job->description,
+                    'skills' => $job->skills,
+                    'status' => $job->status,
+                    'created_at' => $job->created_at,
+                    'updated_at' => $job->updated_at,
+                ];
+            });
+
+        // 3️ Success response
+        return response()->json([
+            'success' => true,
+            'jobs' => $jobs
+        ], 200);
+    }
 }

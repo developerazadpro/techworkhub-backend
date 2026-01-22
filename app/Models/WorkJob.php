@@ -20,9 +20,9 @@ class WorkJob extends Model
         return $this->belongsTo(User::class, 'client_id');
     }
 
-    public function assignment()
+    public function assignments()
     {
-        return $this->hasOne(JobAssignment::class, 'work_job_id');
+        return $this->hasMany(JobAssignment::class, 'work_job_id');
     }
 }
 
