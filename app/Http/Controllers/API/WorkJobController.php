@@ -134,8 +134,9 @@ class WorkJobController extends Controller
             $job = WorkJob::lockForUpdate()->findOrFail($id);
 
             if ($job->status !== 'open') {
-                abort(409, 'Job already assigned.');
+                abort(409, 'Job already assigned.');                
             }
+            
 
             JobAssignment::create([
                 'work_job_id' => $job->id,
@@ -146,8 +147,10 @@ class WorkJobController extends Controller
         });
 
         return response()->json([
+            'success' => true,
             'message' => 'Job accepted successfully'
-        ]);
+        ], 200);
+        
     }
 
     public function myJobs()
