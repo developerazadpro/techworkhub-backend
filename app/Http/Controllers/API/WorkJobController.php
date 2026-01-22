@@ -186,4 +186,25 @@ class WorkJobController extends Controller
             'jobs' => $jobs
         ], 200);
     }
+
+    public function clientJobs(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user->hasRole('client')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized'
+            ], 403);
+        }       
+
+        $jobs = WorkJob::where('client_id', $user->id)
+            ->latest()
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'jobs' => $jobs
+        ]);
+    }
 }
