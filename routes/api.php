@@ -17,6 +17,7 @@ Route::middleware('auth:sanctum')->group(function() {
     // ---------------------------------Technician------------------------------------------------
     //
     Route::get('/work-jobs', [WorkJobController::class, 'index']);
+    Route::get('/work-jobs/{id}', [WorkJobController::class, 'show']);
     Route::post('/work-jobs/{id}/accept', [WorkJobController::class, 'accept']);
     Route::get('/my-jobs', [WorkJobController::class, 'myJobs']);
 

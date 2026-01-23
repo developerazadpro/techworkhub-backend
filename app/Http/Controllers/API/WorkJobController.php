@@ -118,6 +118,29 @@ class WorkJobController extends Controller
         ], 201);
     }
 
+    public function show($id)
+    {
+        $job = WorkJob::with('client:id,name,created_at')->findOrFail($id);
+
+        return response()->json([
+            'success' => true,
+            'job' => [
+                'id' => $job->id,
+                'title' => $job->title,
+                'description' => $job->description,
+                'skills' => $job->skills ?? [],
+                'status' => $job->status,
+                'created_at' => $job->created_at->toDateString(),
+                'posted_ago' => $job->created_at->diffForHumans(),
+                'client' => [
+                    'id' => $job->client_id,
+                    'jobs_posted' => WorkJob::where('client_id', $job->client_id)->count(),
+                    'member_since' => $job->client->created_at->toDateString(),
+                ]
+            ]
+        ], 200);
+    }
+
     public function accept(Request $request, $id)
     {
         $user = $request->user();
