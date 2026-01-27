@@ -233,4 +233,33 @@ class WorkJobController extends Controller
             'jobs' => $jobs
         ]);
     }
+
+    public function updateStatus(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'status' => 'required|in:open,assigned,in_progress,completed,cancelled',
+        ]);
+
+        $job = WorkJob::with('client:id,name,email,created_at')->findOrFail($id);
+
+        // Avoid unnecessary update
+        if ($job->status === $validated['status']) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Status is already set to this value',
+            ], 422);
+        }
+
+        $job->status = $request->status;
+        $job->save();
+
+        // Optional: Trigger notifications here
+        // Notification::dispatch($job);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Job status updated successfully',
+            'job' => $job
+        ]);
+    }
 }
