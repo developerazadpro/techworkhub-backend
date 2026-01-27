@@ -29,6 +29,11 @@ class WorkJobController extends Controller
                 // skills stored as JSON string        
                 $skills = is_array($job->skills) ? $job->skills : json_decode($job->skills ?? '[]', true);
 
+                // Handle recommended_technicians JSON
+                $recommendedTechnicians = is_array($job->recommended_technicians)
+                    ? $job->recommended_technicians
+                    : json_decode($job->recommended_technicians ?? '[]', true);
+
                 return [
                     'id' => $job->id,
                     'client_id' => $job->client_id,
@@ -36,6 +41,7 @@ class WorkJobController extends Controller
                     'description' => $job->description,                    
                     'skills' => $skills,                    
                     'status' => $job->status,
+                    'recommended_technicians' => $recommendedTechnicians,
                     'created_at' => $job->created_at,
                     'updated_at' => $job->updated_at,
                 ];
