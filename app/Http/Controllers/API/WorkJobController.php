@@ -10,6 +10,7 @@ use App\Models\JobAssignment;
 use Illuminate\Support\Facades\DB;
 use App\Services\GoMatchingService;
 use App\Models\User;
+use App\Support\JobStatusTransition;
 
 class WorkJobController extends Controller
 {
@@ -242,6 +243,16 @@ class WorkJobController extends Controller
 
         $job = WorkJob::with('client:id,name,email,created_at')->findOrFail($id);
 
+        $currentStatus = $job->status;
+        $nextStatus = $request->status;
+
+        if (! JobStatusTransition::canTransition($currentStatus, $nextStatus)) {
+            return response()->json([
+                'message' => "Invalid status transition from {$currentStatus} to {$nextStatus}",
+                'allowed' => JobStatusTransition::allowed()[$currentStatus] ?? [],
+            ], 422);
+        }
+
         // Avoid unnecessary update
         if ($job->status === $validated['status']) {
             return response()->json([
@@ -259,7 +270,8 @@ class WorkJobController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Job status updated successfully',
-            'job' => $job
+            'job' => $job,
+            'allowed_next_statuses' => JobStatusTransition::allowed()[$nextStatus],
         ]);
     }
 }
