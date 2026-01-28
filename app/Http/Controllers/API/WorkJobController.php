@@ -86,27 +86,7 @@ class WorkJobController extends Controller
 
         // 4. Call Go matching service (non-blocking)
         try {
-            $matchingService = new GoMatchingService();
-
-            // Fetch all technicians with their skills
-           $technicians = User::whereHas('roles', function ($q) {
-                            $q->where('name', 'technician');
-                        })
-                        ->with('skills')
-                        ->get();
-
-            $response = $matchingService->matchTechnicians([
-                'job_id' => $job->id,
-                'required_skills' => $job->skills,
-                'technicians' => $technicians->map(fn ($tech) => [
-                    'id' => $tech->id,
-                    'skills' => $tech->skills->pluck('name')->toArray(),
-                ])->toArray(),
-            ]);
-
-            $job->update([
-                'recommended_technicians' => $response['recommended_technicians'] ?? [],
-            ]);
+            $this->runMatching($job);
 
         } catch (\Throwable $e) {
             logger()->error('Go matching failed', [
@@ -124,6 +104,56 @@ class WorkJobController extends Controller
             'job' => $job,
         ], 201);
     }
+
+    public function update(Request $request, $id)
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $job = WorkJob::findOrFail($id);
+
+        // Only job owner (client) can update
+        if (!$user->hasRole('client') || $job->client_id !== $user->id) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $validated = $request->validate([
+            'title' => 'sometimes|string|max:255',
+            'description' => 'sometimes|string',
+            'skills' => 'sometimes|array|min:1',
+            'skills.*' => 'string',
+            'status' => 'sometimes|in:open,closed',
+        ]);
+
+        // Detect skill change
+        $skillsChanged =
+            array_key_exists('skills', $validated) &&
+            $validated['skills'] !== $job->skills;
+
+        // Update job
+        $job->update($validated);
+
+        // Re-run matching ONLY if needed
+        if ($skillsChanged || ($validated['status'] ?? null) === 'open') {
+            try {
+                $this->runMatching($job);
+            } catch (\Throwable $e) {
+                logger()->error('Go matching failed on update', [
+                    'work_job_id' => $job->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return response()->json([
+            'message' => 'Job updated successfully',
+            'job' => $job->fresh(),
+        ]);
+    }
+
 
     public function show($id)
     {
@@ -278,6 +308,26 @@ class WorkJobController extends Controller
             'message' => 'Job status updated successfully',
             'job' => $job,
             'allowed_next_statuses' => JobStatusTransition::allowed()[$nextStatus],
+        ]);
+    }
+
+    private function runMatching(WorkJob $job): void
+    {
+        $technicians = User::whereHas('roles', fn ($q) =>
+            $q->where('name', 'technician')
+        )->with('skills')->get();
+
+        $response = app(GoMatchingService::class)->matchTechnicians([
+            'job_id' => $job->id,
+            'required_skills' => $job->skills,
+            'technicians' => $technicians->map(fn ($tech) => [
+                'id' => $tech->id,
+                'skills' => $tech->skills->pluck('name')->toArray(),
+            ])->toArray(),
+        ]);
+
+        $job->update([
+            'recommended_technicians' => $response['recommended_technicians'] ?? [],
         ]);
     }
 }

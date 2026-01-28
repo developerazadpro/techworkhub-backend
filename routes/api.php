@@ -26,6 +26,7 @@ Route::middleware('auth:sanctum')->group(function() {
     // ---------------------------------Client----------------------------------------------------
     //
     Route::post('/work-jobs', [WorkJobController::class, 'store']);
+    Route::put('/work-jobs/{id}', [WorkJobController::class, 'update']);
     Route::get('/client/my-jobs', [WorkJobController::class, 'clientJobs']);
     
 });
